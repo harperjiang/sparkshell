@@ -5,6 +5,10 @@ Example usage of SparkShell wrapper.
 Before running:
 1. Install requirements: pip install -r requirements.txt
 
+Optional:
+- Create a "jvm_options" file to customize JVM settings (memory, GC, etc.)
+- Example: cp jvm_options.example jvm_options
+
 Note: The assembly JAR is built automatically if it doesn't exist!
 """
 

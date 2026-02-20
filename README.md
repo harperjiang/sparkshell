@@ -211,6 +211,34 @@ Response:
 }
 ```
 
+## JVM Options Configuration
+
+You can customize JVM settings by creating a `jvm_options` file in the sparkshell directory:
+
+```bash
+# Copy the example file
+cp jvm_options.example jvm_options
+
+# Edit to customize
+vim jvm_options
+```
+
+Example `jvm_options` file:
+```
+# Memory settings
+-Xmx4g
+-Xms2g
+
+# Garbage collector
+-XX:+UseG1GC
+
+# Java 9+ compatibility
+--add-opens=java.base/java.lang=ALL-UNNAMED
+--add-opens=java.base/java.nio=ALL-UNNAMED
+```
+
+The Python wrapper will automatically load and apply these options when starting the server.
+
 ## Python API Reference
 
 ### SparkConfig

@@ -1,0 +1,34 @@
+# JVM Options for SparkShell
+# 
+# This file contains JVM arguments that will be passed to the Java process.
+# Lines starting with # are comments and will be ignored.
+# Empty lines are also ignored.
+#
+# To use: copy this file to "jvm_options" in the sparkshell directory
+# cp jvm_options.example jvm_options
+
+# Memory settings
+-Xmx4g
+-Xms2g
+
+# Garbage collector settings
+-XX:+UseG1GC
+-XX:MaxGCPauseMillis=200
+
+# Metaspace settings
+-XX:MaxMetaspaceSize=512m
+
+# Java 9+ compatibility settings for Spark
+--add-opens=java.base/java.lang=ALL-UNNAMED
+--add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+--add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+--add-opens=java.base/java.io=ALL-UNNAMED
+--add-opens=java.base/java.net=ALL-UNNAMED
+--add-opens=java.base/java.nio=ALL-UNNAMED
+--add-opens=java.base/java.util=ALL-UNNAMED
+--add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+--add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+
+# Disable reflective access warnings
+-Djdk.reflect.useDirectMethodHandle=false

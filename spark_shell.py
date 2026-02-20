@@ -22,6 +22,17 @@ Usage:
     with SparkShell(source=".", port=8080, spark_config=spark_config) as shell:
         result = shell.execute_sql("SELECT * FROM table")
         print(result)
+
+JVM Options:
+    Create a "jvm_options" file in the source directory to customize JVM settings:
+    
+    # jvm_options file example:
+    -Xmx4g
+    -Xms2g
+    -XX:+UseG1GC
+    --add-opens=java.base/java.lang=ALL-UNNAMED
+    
+    The wrapper will automatically load and apply these options when starting the server.
 """
 
 import os
@@ -127,6 +138,40 @@ class SparkShell:
         self.shutdown()
         return False
     
+    def _load_jvm_options(self) -> list:
+        """
+        Load JVM options from jvm_options file if it exists.
+        
+        Returns:
+            List of JVM options (e.g., ['-Xmx2g', '-XX:+UseG1GC'])
+        """
+        jvm_options_file = self.source / "jvm_options"
+        
+        if not jvm_options_file.exists():
+            return []
+        
+        try:
+            with open(jvm_options_file, 'r') as f:
+                lines = f.readlines()
+            
+            # Parse lines: skip empty lines and comments (starting with #)
+            options = []
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    options.append(line)
+            
+            if options and self.op_config.verbose:
+                print(f"[SparkShell] Loaded {len(options)} JVM options from jvm_options file")
+                for opt in options:
+                    print(f"  JVM option: {opt}")
+            
+            return options
+        except Exception as e:
+            if self.op_config.verbose:
+                print(f"[SparkShell] Warning: Failed to read jvm_options file: {e}")
+            return []
+    
     def _build_assembly(self):
         """Build the assembly JAR using SBT."""
         print("[SparkShell] Building assembly JAR...")
@@ -172,12 +217,17 @@ class SparkShell:
         if self._is_port_in_use():
             raise RuntimeError(f"Port {self.port} is already in use")
         
-        # Build command with port and Spark configs
+        # Load JVM options from file
+        jvm_options = self._load_jvm_options()
+        
+        # Build command with JVM options, jar, port, and Spark configs
         java_home = os.environ.get("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk-amd64")
         java_cmd = os.path.join(java_home, "bin", "java")
-        cmd = [java_cmd, "-jar", str(self.jar_path), str(self.port)]
+        
+        # JVM options must come before -jar
+        cmd = [java_cmd] + jvm_options + ["-jar", str(self.jar_path), str(self.port)]
 
-        # Add Spark configurations as key=value arguments
+        # Add Spark configurations as key=value arguments (after port)
         if self.spark_config.configs:
             for key, value in self.spark_config.configs.items():
                 cmd.append(f"{key}={value}")

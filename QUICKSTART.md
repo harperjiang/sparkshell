@@ -12,6 +12,12 @@
    pip install -r requirements.txt
    ```
 
+2. **(Optional) Configure JVM options:**
+   ```bash
+   cp jvm_options.example jvm_options
+   # Edit jvm_options to customize memory, GC, etc.
+   ```
+
 **Note:** The assembly JAR is built automatically the first time you use `SparkShell`! No manual build needed.
 
 ## Usage in Python Notebook
