@@ -4,28 +4,6 @@ version := "0.1.0"
 
 scalaVersion := "2.13.15"
 
-// Read Delta configuration from environment
-val deltaVersion = sys.env.getOrElse("DELTA_VERSION", "4.0.0")
-val deltaUseLocal = sys.env.getOrElse("DELTA_USE_LOCAL", "false").toBoolean
-val deltaSparkVersion = sys.env.getOrElse("DELTA_SPARK_VERSION", "")
-val deltaArtifactSuffix = if (deltaSparkVersion.startsWith("4.0")) Some("4.0") else None
-val deltaSparkModule = deltaArtifactSuffix.map(s => s"delta-spark_" + s).getOrElse("delta-spark")
-val deltaIcebergModule = deltaArtifactSuffix.map(s => s"delta-iceberg_" + s).getOrElse("delta-iceberg")
-val deltaSupportsIceberg = !deltaSparkVersion.startsWith("4.1") && !deltaSparkVersion.startsWith("4.2")
-
-// Read Unity Catalog configuration from environment
-// UC_USE_LOCAL=true: use UC from Maven Local (requires building UC first: build/sbt publishLocal)
-//    UC main branch is 0.5.0-SNAPSHOT; 0.3.0-SNAPSHOT no longer exists in the repo.
-// UC_USE_LOCAL=false (default): use UC from Maven Central (released 0.3.1)
-val ucUseLocal = sys.env.getOrElse("UC_USE_LOCAL", "false").toBoolean
-val ucVersion = if (ucUseLocal) "0.5.0-SNAPSHOT" else "0.3.1"
-
-// When using local Delta or UC: include Maven local so ~/.m2 snapshots are available.
-// Both Delta and UC publish to ~/.m2 via publishM2.
-// Keep it after normal repositories to avoid shadowing stable transitive dependencies.
-val needsMavenLocal = deltaUseLocal || ucUseLocal
-resolvers := resolvers.value ++ (if (needsMavenLocal) Seq(Resolver.mavenLocal) else Seq.empty)
-
 // Main class for easy running
 Compile / mainClass := Some("com.sparkshell.SparkShellServer")
 assembly / mainClass := Some("com.sparkshell.SparkShellServer")
@@ -75,34 +53,16 @@ javaOptions ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  // Spark
+  // Spark SQL
   "org.apache.spark" %% "spark-sql" % "4.0.0",
 
-  // Delta Lake - version configurable via DELTA_VERSION environment variable
-  "io.delta" %% deltaSparkModule % deltaVersion,
-
-  // Unity Catalog
-  // UC_USE_LOCAL=true: use 0.5.0-SNAPSHOT from ~/.m2 (build UC with publishLocal first)
-  // UC_USE_LOCAL=false: use Maven Central 0.3.1
-  "io.unitycatalog" % "unitycatalog-spark_2.13" % ucVersion,
-
-  // Cloud Storage Support (S3, ADLS)
-  // Note: GCS connector removed due to protobuf version conflict
+  // Cloud Storage Support (S3, Azure, GCS)
   "org.apache.hadoop" % "hadoop-aws" % "3.4.0",
   "org.apache.hadoop" % "hadoop-azure" % "3.4.0",
-  // "com.google.cloud.bigdataoss" % "gcs-connector" % "hadoop3-2.2.22",
+  "org.apache.hadoop" % "hadoop-gcp" % "3.4.0",
   "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.262",
 
   // REST API
   "com.sparkjava" % "spark-core" % "2.9.4",
-  "com.google.code.gson" % "gson" % "2.10.1",
-
-  // Testing
-  "org.scalatest" %% "scalatest" % "3.2.17" % Test
-) ++ {
-  if (deltaSupportsIceberg) {
-    Seq("io.delta" %% deltaIcebergModule % deltaVersion)
-  } else {
-    Seq.empty
-  }
-}
+  "com.google.code.gson" % "gson" % "2.10.1"
+)

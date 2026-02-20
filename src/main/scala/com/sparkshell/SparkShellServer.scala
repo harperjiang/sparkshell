@@ -38,26 +38,6 @@ class SparkShellServer(spark: SparkSession, port: Int) {
 object SparkShellServer {
   private val DEFAULT_PORT = 8080
 
-  private def tryRegisterServerSidePlanningFactory(): Unit = {
-    try {
-      val factoryClass = Class.forName(
-        "org.apache.spark.sql.delta.serverSidePlanning.IcebergRESTCatalogPlanningClientFactory")
-      val singletonField = factoryClass.getField("MODULE$")
-      val factoryInstance = singletonField.get(null)
-
-      val registryClass = Class.forName(
-        "org.apache.spark.sql.delta.serverSidePlanning.ServerSidePlanningClientFactory")
-      val setFactory = registryClass.getMethod("setFactory", factoryClass)
-      setFactory.invoke(null, factoryInstance)
-      println("Registered IcebergRESTCatalogPlanningClientFactory for server-side planning")
-    } catch {
-      case _: ClassNotFoundException =>
-        println("Server-side planning classes not found; skipping FGAC planning client registration")
-      case e: Exception =>
-        println(s"Warning: failed to register server-side planning client factory: ${e.getMessage}")
-    }
-  }
-
   def main(args: Array[String]): Unit = {
     // Parse arguments: port [key1=value1 key2=value2 ...]
     val port = if (args.length > 0) args(0).toInt else DEFAULT_PORT
@@ -70,16 +50,11 @@ object SparkShellServer {
       Map.empty[String, String]
     }
 
-    // Initialize Spark Session with Delta and Unity Catalog support
+    // Initialize Spark Session with cloud storage support
     val builder = SparkSession.builder()
       .appName("Spark SQL REST Server")
       .master("local[*]")
       .config("spark.sql.warehouse.dir", "/tmp/spark-warehouse")
-      // Delta Lake configurations
-      .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-      .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-      // Unity Catalog configuration (catalog type only, URI and token must be provided via spark_configs)
-      // .config("spark.sql.catalog.unity", "io.unitycatalog.spark.UCSingleCatalog")
       // Cloud storage configurations (enable S3, Azure, GCS filesystems)
       .config("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
       .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
@@ -99,36 +74,18 @@ object SparkShellServer {
 
     // Print version information
     println("=" * 60)
-    println("Runtime Configuration:")
-    println(s"  Spark:           ${spark.version}")
-
-    // Get Delta Lake version
-    try {
-      val deltaVersion = io.delta.VERSION
-      println(s"  Delta Lake:      $deltaVersion")
-    } catch {
-      case _: Exception => println(s"  Delta Lake:      enabled (version unknown)")
-    }
-
-    // Check Unity Catalog
-    if (sparkConfigs.contains("spark.sql.catalog.unity.uri") &&
-        sparkConfigs.contains("spark.sql.catalog.unity.token")) {
-      println(s"  Unity Catalog:   enabled (${sparkConfigs("spark.sql.catalog.unity.uri")})")
-    } else {
-      println(s"  Unity Catalog:   available (not configured)")
-    }
+    println("Spark SQL REST Server")
+    println(s"  Spark version: ${spark.version}")
+    println(s"  Port: $port")
     println("=" * 60)
-
-    // Register server-side planning client factory for FGAC support (when available).
-    tryRegisterServerSidePlanningFactory()
 
     // Eagerly initialize Spark internals to avoid lazy loading issues
     try {
       spark.sql("SELECT 1").collect()
-      println("Spark internals pre-initialized successfully")
+      println("Spark initialized successfully")
     } catch {
       case e: Exception =>
-        println(s"Warning during Spark pre-initialization: ${e.getMessage}")
+        println(s"Warning during Spark initialization: ${e.getMessage}")
     }
 
     // Start REST API Server
