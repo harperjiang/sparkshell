@@ -60,6 +60,9 @@ libraryDependencies ++= Seq(
   "org.apache.hadoop" % "hadoop-aws" % "3.4.0",
   "software.amazon.awssdk" % "bundle" % "2.23.19",
 
+  "org.apache.iceberg" % "iceberg-spark-runtime-4.0_2.13" % "1.10.0",
+  "org.apache.iceberg" % "iceberg-aws-bundle" % "1.10.0",
+
   // REST API
   "com.sparkjava" % "spark-core" % "2.9.4",
   "com.google.code.gson" % "gson" % "2.10.1"
