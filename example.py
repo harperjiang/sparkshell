@@ -3,8 +3,9 @@
 Example usage of SparkShell wrapper.
 
 Before running:
-1. Build the project: build/sbt assembly
-2. Install requirements: pip install -r requirements.txt
+1. Install requirements: pip install -r requirements.txt
+
+Note: The assembly JAR is built automatically if it doesn't exist!
 """
 
 from spark_shell import SparkShell, SparkConfig, OpConfig

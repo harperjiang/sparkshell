@@ -44,10 +44,12 @@ This will create `target/scala-2.13/sparkshell.jar`.
 
 ### Option 1: Python Wrapper (Recommended for Notebooks)
 
+The Python wrapper automatically builds the JAR if it doesn't exist, so you can start using it immediately!
+
 ```python
 from spark_shell import SparkShell, SparkConfig
 
-# Basic usage
+# Basic usage - automatically builds JAR if needed
 with SparkShell(source=".", port=8080) as shell:
     result = shell.execute_sql("SELECT 1 as id, 'Alice' as name")
     print(result)

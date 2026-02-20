@@ -47,6 +47,7 @@ class OpConfig:
     auto_start: bool = True
     cleanup_on_exit: bool = False
     startup_timeout: int = 60
+    build_timeout: int = 300  # 5 minutes for assembly build
 
 
 class SparkShell:
@@ -86,19 +87,29 @@ class SparkShell:
         if not self.source.exists():
             raise FileNotFoundError(f"Source directory not found: {self.source}")
         
-        # Verify required files
-        self.jar_path = self.source / "target" / "scala-2.13" / "sparkshell.jar"
-        if not self.jar_path.exists():
+        # Check for SBT script
+        sbt_script = self.source / "build" / "sbt"
+        if not sbt_script.exists():
             raise FileNotFoundError(
-                f"Assembly JAR not found at: {self.jar_path}\n"
-                f"Please build the project first: cd {self.source} && build/sbt assembly"
+                f"SBT script not found at: {sbt_script}\n"
+                f"The source directory must contain a valid SparkShell project."
             )
-
+        
+        # Set JAR path
+        self.jar_path = self.source / "target" / "scala-2.13" / "sparkshell.jar"
+        
         # Runtime state
         self.process: Optional[subprocess.Popen] = None
         self.is_ready = False
         self.base_url = f"http://localhost:{self.port}"
-
+        
+        # Build if JAR doesn't exist
+        if not self.jar_path.exists():
+            if self.op_config.verbose:
+                print(f"[SparkShell] JAR not found at: {self.jar_path}")
+                print(f"[SparkShell] Building assembly automatically...")
+            self._build_assembly()
+        
         if self.op_config.verbose:
             print(f"[SparkShell] Initialized")
             print(f"  Source: {self.source}")
@@ -115,6 +126,42 @@ class SparkShell:
         """Context manager exit - cleanup."""
         self.shutdown()
         return False
+    
+    def _build_assembly(self):
+        """Build the assembly JAR using SBT."""
+        print("[SparkShell] Building assembly JAR...")
+        print("[SparkShell] This may take several minutes on first run...")
+        
+        sbt_script = self.source / "build" / "sbt"
+        
+        # Make sbt executable
+        os.chmod(sbt_script, 0o755)
+        
+        try:
+            # Run sbt assembly
+            result = subprocess.run(
+                [str(sbt_script), "assembly"],
+                cwd=self.source,
+                timeout=self.op_config.build_timeout,
+                check=True,
+                capture_output=not self.op_config.verbose,
+                text=True
+            )
+            
+            # Verify JAR was created
+            if not self.jar_path.exists():
+                raise FileNotFoundError(f"Assembly JAR not found after build: {self.jar_path}")
+            
+            print(f"[SparkShell] Build complete: {self.jar_path}")
+            
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(
+                f"Build timeout after {self.op_config.build_timeout} seconds\n"
+                f"Consider increasing build_timeout in OpConfig."
+            )
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise RuntimeError(f"Assembly build failed: {error_msg}")
     
     def start(self):
         """Start the Spark SQL REST server."""

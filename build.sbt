@@ -58,9 +58,7 @@ libraryDependencies ++= Seq(
 
   // Cloud Storage Support (S3, Azure, GCS)
   "org.apache.hadoop" % "hadoop-aws" % "3.4.0",
-  "org.apache.hadoop" % "hadoop-azure" % "3.4.0",
-  "org.apache.hadoop" % "hadoop-gcp" % "3.4.0",
-  "com.amazonaws" % "aws-java-sdk-bundle" % "1.12.262",
+  "software.amazon.awssdk" % "bundle" % "2.23.19",
 
   // REST API
   "com.sparkjava" % "spark-core" % "2.9.4",

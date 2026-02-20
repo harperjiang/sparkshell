@@ -7,17 +7,12 @@
 
 ## Setup (One Time)
 
-1. **Build the project:**
-   ```bash
-   cd /Users/hao.jiang/sparkshell
-   build/sbt assembly
-   ```
-   This will create `target/scala-2.13/sparkshell.jar`
-
-2. **Install Python dependencies:**
+1. **Install Python dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
+
+**Note:** The assembly JAR is built automatically the first time you use `SparkShell`! No manual build needed.
 
 ## Usage in Python Notebook
 
@@ -69,9 +64,9 @@ If you get "Port already in use" error, either:
 - Use a different port: `SparkShell(source=".", port=8081)`
 - Stop the existing server: `bin/stop.sh`
 
-### JAR Not Found
-If you get "Assembly JAR not found" error:
-- Run `build/sbt assembly` first to build the project
+### First Run Build Time
+The first time you use SparkShell, it will automatically build the assembly JAR.
+This takes 3-5 minutes. Subsequent runs use the cached JAR.
 
 ### Java Version
 Spark 4.0 requires Java 17. Check your version:

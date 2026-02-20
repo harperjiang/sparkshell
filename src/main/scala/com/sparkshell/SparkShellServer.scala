@@ -1,6 +1,7 @@
 package com.sparkshell
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.deploy.SparkSubmitUtils
 
 
 class SparkShellServer(spark: SparkSession, port: Int) {
@@ -38,6 +39,32 @@ class SparkShellServer(spark: SparkSession, port: Int) {
 object SparkShellServer {
   private val DEFAULT_PORT = 8080
 
+  /**
+   * Resolve and download Maven packages specified in spark.jars.packages.
+   * Returns the list of resolved JAR paths.
+   */
+  private def resolvePackages(packages: String, repositories: Option[String]): Seq[String] = {
+    println(s"[SparkShell] Resolving Maven packages: $packages")
+    
+    try {
+      val repos = repositories.getOrElse("https://repo1.maven.org/maven2/")
+      val resolved = SparkSubmitUtils.resolveMavenCoordinates(
+        packages,
+        repos,
+        None,  // ivySettings
+        exclusions = Nil,
+        isTest = false
+      )
+      
+      println(s"[SparkShell] Resolved ${resolved.split(",").length} JARs from Maven")
+      resolved.split(",").toSeq
+    } catch {
+      case e: Exception =>
+        println(s"[SparkShell] Warning: Failed to resolve packages: ${e.getMessage}")
+        Seq.empty
+    }
+  }
+
   def main(args: Array[String]): Unit = {
     // Parse arguments: port [key1=value1 key2=value2 ...]
     val port = if (args.length > 0) args(0).toInt else DEFAULT_PORT
@@ -49,6 +76,12 @@ object SparkShellServer {
     } else {
       Map.empty[String, String]
     }
+
+    // Handle spark.jars.packages - resolve and download Maven packages
+    val resolvedJars = sparkConfigs.get("spark.jars.packages").map { packages =>
+      val repos = sparkConfigs.get("spark.jars.repositories")
+      resolvePackages(packages, repos)
+    }.getOrElse(Seq.empty)
 
     // Initialize Spark Session with cloud storage support
     val builder = SparkSession.builder()
@@ -62,11 +95,22 @@ object SparkShellServer {
       .config("spark.hadoop.fs.azure.impl", "org.apache.hadoop.fs.azure.NativeAzureFileSystem")
       .config("spark.hadoop.fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem")
     
-    // Apply custom Spark configurations
-    val builderWithConfigs = sparkConfigs.foldLeft(builder) { case (b, (key, value)) =>
-      println(s"Applying custom Spark config: $key = $value")
-      b.config(key, value)
+    // Add resolved JARs to spark.jars config
+    val builderWithJars = if (resolvedJars.nonEmpty) {
+      val jarsStr = resolvedJars.mkString(",")
+      println(s"[SparkShell] Adding resolved JARs to classpath")
+      builder.config("spark.jars", jarsStr)
+    } else {
+      builder
     }
+    
+    // Apply custom Spark configurations (excluding spark.jars.packages which was already handled)
+    val builderWithConfigs = sparkConfigs
+      .filterKeys(k => k != "spark.jars.packages" && k != "spark.jars.repositories")
+      .foldLeft(builderWithJars) { case (b, (key, value)) =>
+        println(s"Applying custom Spark config: $key = $value")
+        b.config(key, value)
+      }
     
     val spark = builderWithConfigs.getOrCreate()
 
