@@ -119,7 +119,7 @@ class SparkShell:
     def start(self):
         """Start the Spark SQL REST server."""
         if self.op_config.verbose:
-        print(f"[SparkShell] Starting server on port {self.port}...")
+            print(f"[SparkShell] Starting server on port {self.port}...")
 
         # Check if port is already in use
         if self._is_port_in_use():
@@ -135,7 +135,7 @@ class SparkShell:
             for key, value in self.spark_config.configs.items():
                 cmd.append(f"{key}={value}")
                 if self.op_config.verbose:
-                print(f"[SparkShell] Setting Spark config: {key}={value}")
+                    print(f"[SparkShell] Setting Spark config: {key}={value}")
 
         if self.op_config.verbose:
             print(f"[SparkShell] Running: {' '.join(cmd)}")
@@ -154,14 +154,14 @@ class SparkShell:
 
         # Wait for server to be ready
         if self.op_config.verbose:
-        print("[SparkShell] Waiting for server to start...")
+            print("[SparkShell] Waiting for server to start...")
 
         start_time = time.time()
         while time.time() - start_time < self.op_config.startup_timeout:
             if self._check_health():
                 self.is_ready = True
                 if self.op_config.verbose:
-                print(f"[SparkShell] Server ready at {self.base_url}")
+                    print(f"[SparkShell] Server ready at {self.base_url}")
                 return
 
             # Check if process died
@@ -256,7 +256,7 @@ class SparkShell:
             return
         
         if self.op_config.verbose:
-        print("[SparkShell] Shutting down server...")
+            print(f"[SparkShell] Shutting down server...")
         
         try:
             # Try graceful shutdown first
@@ -266,17 +266,17 @@ class SparkShell:
             try:
                 self.process.wait(timeout=10)
                 if self.op_config.verbose:
-                print("[SparkShell] Server shutdown complete")
+                    print("[SparkShell] Server shutdown complete")
             except subprocess.TimeoutExpired:
                 if self.op_config.verbose:
-                print("[SparkShell] Forcing server shutdown...")
+                    print("[SparkShell] Forcing server shutdown...")
                 self.process.kill()
                 self.process.wait()
                 if self.op_config.verbose:
-                print("[SparkShell] Server killed")
+                    print("[SparkShell] Server killed")
         except Exception as e:
             if self.op_config.verbose:
-            print(f"[SparkShell] Error during shutdown: {e}")
+                print(f"[SparkShell] Error during shutdown: {e}")
         finally:
             self.process = None
             self.is_ready = False
